@@ -10,6 +10,7 @@ This version has breaking changes — APIs, conventions, and file structure may 
 - **shadcn/ui**: preset `nova` — esta versión del CLI reemplazó style/base-color por presets con nombre; `nova` es el que trae `baseColor: neutral` por default.
 - **Contraseñas**: hash con `crypto.scrypt` nativo de Node, no bcrypt, para no sumar una dependencia que no estaba pedida.
 - **Catálogo**: precio e imagen de portada en el listado vienen de la variante más barata; si hay empate de precio entre variantes, se prefiere mostrar la que tiene descuento (`getCheapestVariant` en `src/modules/catalog/types/catalog.ts`) — mostrar el precio tachado es más útil que ocultarlo por el orden en que Postgres devuelve las filas.
+- **Pagos**: interfaz común `PaymentProvider` (`src/modules/payments/types/payment-provider.ts`) implementada por adapters en `lib/payments/` (Stripe, Mercado Pago) y elegida por el factory `getPaymentProvider`. El checkout habla siempre con la interfaz, nunca con un SDK. `Order.paymentRef` guarda el id de la transacción del proveedor y es la clave de idempotencia de los webhooks; `orderId` viaja como `metadata`/`external_reference`. Verificación de firma de webhook incluida (Stripe vía `constructEvent`, MP vía HMAC del manifest). Los métodos con decisiones de checkout pendientes tienen `TODO(Paso C/D)`.
 
 ## Convención de módulos
 
