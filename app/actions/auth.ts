@@ -1,11 +1,13 @@
 "use server";
 
 import { AuthError } from "next-auth";
+import { redirect } from "next/navigation";
 
 import { auth, signIn, signOut } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { hashPassword } from "@/lib/password";
 import { LoginSchema, RegisterSchema } from "@/lib/validations/auth";
+import { mergeGuestCartIntoUser } from "@/src/modules/cart/actions/merge-guest-cart";
 
 export type FormState =
   | {
@@ -32,16 +34,22 @@ export async function login(
   }
 
   try {
-    await signIn("credentials", {
-      ...validatedFields.data,
-      redirectTo: "/",
-    });
+    // redirect: false para poder fusionar el carrito de invitado antes de salir.
+    await signIn("credentials", { ...validatedFields.data, redirect: false });
   } catch (error) {
     if (error instanceof AuthError) {
       return { message: "Email o contraseña incorrectos." };
     }
     throw error;
   }
+
+  const user = await prisma.user.findUnique({
+    where: { email: validatedFields.data.email },
+    select: { id: true },
+  });
+  if (user) await mergeGuestCartIntoUser(user.id);
+
+  redirect("/");
 }
 
 export async function register(
@@ -66,18 +74,22 @@ export async function register(
   }
 
   const passwordHash = await hashPassword(password);
-  await prisma.user.create({
+  const user = await prisma.user.create({
     data: { name, email, passwordHash },
   });
 
   try {
-    await signIn("credentials", { email, password, redirectTo: "/" });
+    await signIn("credentials", { email, password, redirect: false });
   } catch (error) {
     if (error instanceof AuthError) {
       return { message: "Cuenta creada. Iniciá sesión manualmente." };
     }
     throw error;
   }
+
+  await mergeGuestCartIntoUser(user.id);
+
+  redirect("/");
 }
 
 export async function logout() {

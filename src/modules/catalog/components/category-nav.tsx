@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { getCategories } from "@/src/modules/catalog/actions/get-categories";
+import { CartIcon } from "@/src/modules/cart/components/cart-icon";
 
 export async function CategoryNav() {
   const categories = await getCategories();
@@ -23,9 +24,12 @@ export async function CategoryNav() {
             {category.name}
           </Link>
         ))}
-        <Link href="/login" className="ml-auto text-muted-foreground hover:text-foreground">
-          Ingresar
-        </Link>
+        <div className="ml-auto flex items-center gap-4">
+          <Link href="/login" className="text-muted-foreground hover:text-foreground">
+            Ingresar
+          </Link>
+          <CartIcon />
+        </div>
       </nav>
     </header>
   );

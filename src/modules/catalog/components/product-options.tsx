@@ -1,9 +1,10 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useActionState, useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { formatCents } from "@/lib/money";
+import { addItem } from "@/src/modules/cart/actions/mutations";
 import {
   toVariantAttributes,
   type ProductVariantDetail,
@@ -65,6 +66,7 @@ export function ProductOptions({ variants }: ProductOptionsProps) {
   const [selected, setSelected] = useState<Record<string, string>>(
     () => parsedVariants[0]?.attrs ?? {}
   );
+  const [state, formAction, pending] = useActionState(addItem, undefined);
 
   const activeVariant = parsedVariants.find(({ attrs }) =>
     attributeKeys.every((key) => attrs[key] === selected[key])
@@ -72,16 +74,6 @@ export function ProductOptions({ variants }: ProductOptionsProps) {
 
   const hasDiscount =
     !!activeVariant?.compareAtCents && activeVariant.compareAtCents > activeVariant.priceCents;
-
-  function handleAddToCart() {
-    if (!activeVariant) return;
-    // El carrito real se implementa en la próxima fase.
-    console.log("Agregar al carrito", {
-      variantId: activeVariant.id,
-      sku: activeVariant.sku,
-      quantity: 1,
-    });
-  }
 
   if (parsedVariants.length === 0) {
     return (
@@ -95,15 +87,21 @@ export function ProductOptions({ variants }: ProductOptionsProps) {
     <div className="flex flex-col gap-6">
       {attributeKeys.map((key) => (
         <div key={key} className="flex flex-col gap-2">
-          <span className="text-sm font-medium">{capitalize(key)}</span>
-          <div className="flex flex-wrap gap-2">
+          <span id={`attr-label-${key}`} className="text-sm font-medium">
+            {capitalize(key)}
+          </span>
+          <div
+            role="group"
+            aria-labelledby={`attr-label-${key}`}
+            className="flex flex-wrap gap-2"
+          >
             {attributeValues.get(key)?.map((value) => (
               <button
                 key={value}
                 type="button"
                 onClick={() => setSelected((prev) => ({ ...prev, [key]: value }))}
                 aria-pressed={selected[key] === value}
-                className={`rounded-md border px-3 py-1.5 text-sm transition-colors ${
+                className={`rounded-md border px-3 py-1.5 text-sm transition-colors outline-none focus-visible:ring-3 focus-visible:ring-ring/50 ${
                   selected[key] === value
                     ? "border-foreground bg-foreground text-background"
                     : "border-input hover:border-foreground"
@@ -142,13 +140,27 @@ export function ProductOptions({ variants }: ProductOptionsProps) {
         )}
       </div>
 
-      <Button
-        onClick={handleAddToCart}
-        disabled={!activeVariant || activeVariant.stock <= 0}
-        className="w-full sm:w-auto"
-      >
-        Agregar al carrito
-      </Button>
+      <form action={formAction} className="flex flex-col gap-2">
+        <input type="hidden" name="variantId" value={activeVariant?.id ?? ""} />
+        <input type="hidden" name="quantity" value="1" />
+        <Button
+          type="submit"
+          disabled={pending || !activeVariant || activeVariant.stock <= 0}
+          className="w-full sm:w-auto"
+        >
+          {pending ? "Agregando..." : "Agregar al carrito"}
+        </Button>
+        {state?.status === "error" && (
+          <p className="text-sm text-destructive" role="alert">
+            {state.message}
+          </p>
+        )}
+        {state?.status === "success" && (
+          <p className="text-sm text-green-600 dark:text-green-500" role="status">
+            {state.message}
+          </p>
+        )}
+      </form>
     </div>
   );
 }
