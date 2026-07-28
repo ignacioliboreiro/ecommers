@@ -46,7 +46,7 @@ export function CartItemRow({ item }: { item: CartLineItem }) {
   const atMax = item.quantity >= item.stock;
 
   return (
-    <li className="flex gap-4 py-4">
+    <div className="flex gap-4 py-4">
       <Link
         href={`/products/${item.productSlug}`}
         className="relative size-20 shrink-0 overflow-hidden rounded-md bg-muted"
@@ -67,10 +67,12 @@ export function CartItemRow({ item }: { item: CartLineItem }) {
           {item.productName}
         </Link>
         {label && <p className="text-xs text-muted-foreground">{label}</p>}
-        <p className="text-sm text-muted-foreground">{formatCents(item.unitPriceCents)} c/u</p>
+        <p className="text-sm text-muted-foreground tabular-nums">
+          {formatCents(item.unitPriceCents)} c/u
+        </p>
 
         <div className="mt-1 flex items-center gap-2">
-          <div className="flex items-center rounded-md border">
+          <div className="flex items-center rounded-md border border-input">
             <Button
               type="button"
               variant="ghost"
@@ -118,7 +120,9 @@ export function CartItemRow({ item }: { item: CartLineItem }) {
         )}
       </div>
 
-      <div className="text-right font-medium">{formatCents(item.lineSubtotalCents)}</div>
-    </li>
+      <div className="text-right font-medium tabular-nums">
+        {formatCents(item.lineSubtotalCents)}
+      </div>
+    </div>
   );
 }

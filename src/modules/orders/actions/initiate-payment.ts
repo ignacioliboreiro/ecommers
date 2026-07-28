@@ -82,8 +82,10 @@ export async function initiatePayment(
     },
   });
 
-  // 7. Revalidate paths
-  revalidatePath("/(storefront)/cart");
+  // 7. Revalidate paths. Ojo: los route groups de Next (ej. "(storefront)")
+  // son solo organización de carpetas y NO forman parte de la URL — el path
+  // real acá es "/cart", no "/(storefront)/cart".
+  revalidatePath("/cart");
   revalidatePath(`/order/${order.id}`);
 
   // 8. Return the payment data needed by the frontend - shaped to match useActionState expectations
