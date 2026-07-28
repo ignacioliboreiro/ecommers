@@ -39,3 +39,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# contexto de trabajo interno — NO versionar
+PROJECT_CONTEXT.md
