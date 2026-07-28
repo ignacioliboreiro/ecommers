@@ -56,7 +56,7 @@ model Session {
 
 model Address {
   id         String  @id @default(cuid())
-  userId     String
+  userId     String? // null for guest addresses
   label      String? // "Casa", "Trabajo"
   street     String
   city       String
@@ -65,8 +65,7 @@ model Address {
   country    String
   phone      String?
   isDefault  Boolean @default(false)
-  user       User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  orders     Order[]
+  user       User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
 }
 
 // ---------- Catálogo ----------
@@ -128,6 +127,7 @@ enum StockMovementType {
   RESTOCK
   SALE
   ADJUSTMENT
+  RESERVATION
   RETURN
 }
 
@@ -166,11 +166,13 @@ model CartItem {
 // ---------- Órdenes y pagos ----------
 
 enum OrderStatus {
-  PENDING
+  PENDING_PAYMENT
+  PROCESSING
   PAID
   FULFILLED
   CANCELLED
   REFUNDED
+  EXPIRED
 }
 
 enum PaymentProviderType {
@@ -180,22 +182,48 @@ enum PaymentProviderType {
 
 model Order {
   id              String              @id @default(cuid())
-  userId          String
-  addressId       String
-  status          OrderStatus         @default(PENDING)
+  userId          String?             // nullable for guest orders
+  guestId         String?             // nullable for guest orders
+  status          OrderStatus         @default(PENDING_PAYMENT)
   subtotalCents   Int
   discountCents   Int                 @default(0)
+  taxCents        Int                 @default(0)
   shippingCents   Int                 @default(0)
   totalCents      Int
+  currency        String              @default("USD")
   couponId        String?
   paymentProvider PaymentProviderType
   paymentRef      String? // id de la transacción en Stripe/MP
+  contactEmail    String? // payerEmail del checkout; único medio de contacto para guests
+  // Denormalized address snapshot (for historical accuracy and idempotency)
+  addressLine1    String
+  addressLine2    String?
+  city            String
+  state           String
+  postalCode      String
+  country         String
+  phone           String?
+  // Expiration for pending payments
+  expiresAt       DateTime?
   createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
 
-  user    User        @relation(fields: [userId], references: [id])
-  address Address     @relation(fields: [addressId], references: [id])
-  coupon  Coupon?     @relation(fields: [couponId], references: [id])
+  user    User?     @relation(fields: [userId], references: [id])
+  coupon  Coupon?   @relation(fields: [couponId], references: [id])
   items   OrderItem[]
+}
+
+// Idempotencia de webhooks: (provider, providerRef) identifica una notificación
+// ya procesada — el webhook intenta crear esta fila antes de aplicar efectos
+// (stock, email, carrito) y si ya existe (constraint único), no repite nada.
+model PaymentEvent {
+  id          String              @id @default(cuid())
+  provider    PaymentProviderType
+  providerRef String
+  rawType     String
+  createdAt   DateTime            @default(now())
+
+  @@unique([provider, providerRef])
 }
 
 model OrderItem {
