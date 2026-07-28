@@ -1,6 +1,52 @@
 "use server";
 
+import type { Prisma } from "@prisma/client";
+
 import { prisma } from "@/lib/prisma";
+
+/**
+ * Libera el stock reservado de una o más órdenes: crea un StockMovement
+ * ADJUSTMENT por cada item y devuelve el stock a ProductVariant agrupado
+ * por variante (por si varias órdenes comparten la misma). Compartido por
+ * expireOldOrders() (batch, cron) y updateOrderStatus() (manual, admin) —
+ * es la misma operación de negocio en ambos casos, solo cambia quién y por
+ * qué la dispara.
+ */
+export async function restoreStockForOrder(
+  tx: Prisma.TransactionClient,
+  orderIds: string[],
+  reason: string
+): Promise<void> {
+  if (orderIds.length === 0) return;
+
+  const orderItems = await tx.orderItem.findMany({
+    where: { orderId: { in: orderIds } },
+    include: { variant: true },
+  });
+
+  const stockRestorations = orderItems.map((item) => ({
+    variantId: item.variantId,
+    type: "ADJUSTMENT" as const,
+    quantity: item.quantity, // positive = adding back to stock
+    note: `Order ${item.orderId} ${reason}, stock restored`,
+  }));
+
+  await tx.stockMovement.createMany({ data: stockRestorations });
+
+  const quantityByVariant = new Map<string, number>();
+  for (const item of orderItems) {
+    quantityByVariant.set(
+      item.variantId,
+      (quantityByVariant.get(item.variantId) ?? 0) + item.quantity
+    );
+  }
+  for (const [variantId, quantity] of quantityByVariant) {
+    await tx.productVariant.update({
+      where: { id: variantId },
+      data: { stock: { increment: quantity } },
+    });
+  }
+}
 
 /**
  * Expire orders that have been in PENDING_PAYMENT state for too long
@@ -24,61 +70,15 @@ export async function expireOldOrders(): Promise<number> {
     return 0;
   }
 
-  // Update expired orders to EXPIRED status and restore stock
   const expiredOrderIds = expiredOrders.map((order) => order.id);
 
   const result = await prisma.$transaction(async (tx) => {
-    // Update order status to EXPIRED
     await tx.order.updateMany({
-      where: {
-        id: {
-          in: expiredOrderIds,
-        },
-      },
-      data: {
-        status: "EXPIRED",
-      },
+      where: { id: { in: expiredOrderIds } },
+      data: { status: "EXPIRED" },
     });
 
-    // Restore stock for expired orders
-    const orderItems = await tx.orderItem.findMany({
-      where: {
-        orderId: {
-          in: expiredOrderIds,
-        },
-      },
-      include: {
-        variant: true,
-      },
-    });
-
-    // Create stock movements to restore inventory (positive quantity = stock coming in)
-    const stockRestorations = orderItems.map((item) => ({
-      variantId: item.variantId,
-      type: "ADJUSTMENT" as const, // Using ADJUSTMENT for stock restoration
-      quantity: item.quantity, // positive = adding back to stock
-      note: `Order ${item.orderId} expired, stock restored`,
-    }));
-
-    await tx.stockMovement.createMany({
-      data: stockRestorations,
-    });
-
-    // Devolver el stock reservado: agrupar por variante por si varias
-    // órdenes expiradas comparten la misma variante.
-    const quantityByVariant = new Map<string, number>();
-    for (const item of orderItems) {
-      quantityByVariant.set(
-        item.variantId,
-        (quantityByVariant.get(item.variantId) ?? 0) + item.quantity
-      );
-    }
-    for (const [variantId, quantity] of quantityByVariant) {
-      await tx.productVariant.update({
-        where: { id: variantId },
-        data: { stock: { increment: quantity } },
-      });
-    }
+    await restoreStockForOrder(tx, expiredOrderIds, "expired");
 
     return expiredOrderIds.length;
   });

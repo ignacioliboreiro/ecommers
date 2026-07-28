@@ -31,6 +31,7 @@ model User {
   accounts  Account[]
   sessions  Session[]
   cart      Cart?
+  orderStatusChanges OrderStatusChange[]
 }
 
 model Account {
@@ -211,6 +212,22 @@ model Order {
   user    User?     @relation(fields: [userId], references: [id])
   coupon  Coupon?   @relation(fields: [couponId], references: [id])
   items   OrderItem[]
+  statusChanges OrderStatusChange[]
+}
+
+// Auditoría de cambios manuales de estado hechos por un admin desde el panel
+// (los cambios automáticos de los webhooks/cron no pasan por acá).
+model OrderStatusChange {
+  id              String      @id @default(cuid())
+  orderId         String
+  fromStatus      OrderStatus
+  toStatus        OrderStatus
+  changedByUserId String
+  note            String?
+  createdAt       DateTime    @default(now())
+
+  order     Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  changedBy User  @relation(fields: [changedByUserId], references: [id])
 }
 
 // Idempotencia de webhooks: (provider, providerRef) identifica una notificación
