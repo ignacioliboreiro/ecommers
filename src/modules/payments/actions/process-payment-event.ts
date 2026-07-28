@@ -156,12 +156,17 @@ async function sendOrderConfirmationEmail(
 
   try {
     const resend = new Resend(apiKey);
-    await resend.emails.send({
+    const result = await resend.emails.send({
       from,
       to,
       subject: `Confirmación de tu pedido #${orderId}`,
       text: `¡Gracias por tu compra! Tu pedido #${orderId} por un total de $${(totalCents / 100).toFixed(2)} fue confirmado.`,
     });
+    if (result.error) {
+      console.error(`[Email] Resend rechazó la confirmación de orden ${orderId}:`, result.error);
+    } else {
+      console.log(`[Email] Confirmación de orden ${orderId} enviada a ${to}, Resend id: ${result.data?.id}`);
+    }
   } catch (err) {
     // Un fallo de email no debe hacer fallar el webhook (Stripe/MP reintentarían igual).
     console.error(`[Email] Error enviando confirmación de orden ${orderId}:`, err);
