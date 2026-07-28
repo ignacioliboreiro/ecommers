@@ -1,34 +1,38 @@
 import Link from "next/link";
+import { Zap } from "lucide-react";
 
+import { auth } from "@/auth";
 import { getCategories } from "@/src/modules/catalog/actions/get-categories";
 import { CartIcon } from "@/src/modules/cart/components/cart-icon";
 
+import { MobileNav } from "./mobile-nav";
+import { NavAccount } from "./nav-account";
+import { NavLinks } from "./nav-links";
+
 export async function CategoryNav() {
-  const categories = await getCategories();
+  const [categories, session] = await Promise.all([getCategories(), auth()]);
 
   return (
-    <header className="border-b">
-      <nav className="mx-auto flex max-w-6xl flex-wrap items-center gap-4 px-4 py-3 text-sm">
-        <Link href="/" className="font-semibold">
-          Tienda
+    <header className="sticky top-0 z-40 border-b border-border bg-background/80 backdrop-blur-md">
+      <nav className="mx-auto flex h-16 max-w-6xl items-center gap-4 px-4">
+        <Link
+          href="/"
+          className="inline-flex items-center gap-1.5 text-lg font-semibold tracking-tight"
+        >
+          <Zap className="size-5 fill-primary text-primary" aria-hidden />
+          Voltio
         </Link>
-        <Link href="/products" className="text-muted-foreground hover:text-foreground">
-          Todos
-        </Link>
-        {categories.map((category) => (
-          <Link
-            key={category.id}
-            href={`/products?category=${category.slug}`}
-            className="text-muted-foreground hover:text-foreground"
-          >
-            {category.name}
-          </Link>
-        ))}
-        <div className="ml-auto flex items-center gap-4">
-          <Link href="/login" className="text-muted-foreground hover:text-foreground">
-            Ingresar
-          </Link>
-          <CartIcon />
+
+        <div className="hidden md:block">
+          <NavLinks categories={categories} />
+        </div>
+
+        <div className="ml-auto flex items-center gap-1">
+          <NavAccount />
+          <div className="px-1">
+            <CartIcon />
+          </div>
+          <MobileNav categories={categories} isLoggedIn={!!session?.user} />
         </div>
       </nav>
     </header>
