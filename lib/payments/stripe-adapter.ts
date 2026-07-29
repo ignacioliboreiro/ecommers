@@ -8,7 +8,8 @@ import type {
   PaymentIntentResult,
   PaymentOrderInput,
   PaymentProvider,
-} from "@/src/modules/payments/types/payment-provider";
+  PaymentStatusResult,
+} from "./types";
 
 function getStripe(): Stripe {
   const key = process.env.STRIPE_SECRET_KEY;
@@ -38,6 +39,7 @@ function mapStatus(status: Stripe.PaymentIntent.Status): PaymentEventStatus {
 
 export const stripeAdapter: PaymentProvider = {
   type: "STRIPE",
+  isReal: true,
 
   async createPaymentIntent(order: PaymentOrderInput): Promise<PaymentIntentResult> {
     const stripe = getStripe();
@@ -92,6 +94,19 @@ export const stripeAdapter: PaymentProvider = {
       status: mapStatus(intent.status),
       providerRef: intent.id,
       rawType: event.type,
+    };
+  },
+
+  async getPaymentStatus(providerRef: string): Promise<PaymentStatusResult> {
+    const intent = await getStripe().paymentIntents.retrieve(providerRef);
+
+    return {
+      provider: "STRIPE",
+      providerRef: intent.id,
+      status: mapStatus(intent.status),
+      rawStatus: intent.status,
+      amountCents: intent.amount,
+      currency: intent.currency,
     };
   },
 };

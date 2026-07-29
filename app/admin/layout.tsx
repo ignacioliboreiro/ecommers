@@ -16,7 +16,9 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   }
 
   return (
-    <div className="flex min-h-screen flex-col">
+    // `flex-1` y no `min-h-screen`: el <body> ya es `min-h-full flex-col`, y con
+    // el banner de modo demo arriba un `min-h-screen` acá desbordaría la ventana.
+    <div className="flex flex-1 flex-col">
       <header className="flex items-center justify-between border-b border-border px-6 py-3">
         <div className="flex items-center gap-2 font-semibold">
           <Zap className="size-4 text-primary" aria-hidden />

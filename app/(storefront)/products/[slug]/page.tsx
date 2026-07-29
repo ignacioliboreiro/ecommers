@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { notFound } from "next/navigation";
+import { ChevronRight } from "lucide-react";
 
 import { getProductBySlug } from "@/src/modules/catalog/actions/get-product-by-slug";
 import { ProductGallery } from "@/src/modules/catalog/components/product-gallery";
@@ -24,20 +26,39 @@ export default async function ProductDetailPage({ params }: ProductPageProps) {
 
   return (
     <div className="mx-auto w-full max-w-6xl px-4 py-8">
-      <div className="grid gap-8 lg:grid-cols-2">
+      <nav aria-label="Breadcrumb" className="mb-6 flex items-center gap-1.5 text-sm text-muted-foreground">
+        <Link href="/products" className="hover:text-foreground">
+          Productos
+        </Link>
+        <ChevronRight className="size-3.5" aria-hidden />
+        <Link
+          href={`/products?category=${product.category.slug}`}
+          className="hover:text-foreground"
+        >
+          {product.category.name}
+        </Link>
+        <ChevronRight className="size-3.5" aria-hidden />
+        <span className="text-foreground">{product.name}</span>
+      </nav>
+
+      <div className="grid gap-10 lg:grid-cols-2">
         <ProductGallery images={product.images} productName={product.name} />
 
-        <div className="flex flex-col gap-4">
-          <div>
+        <div className="flex flex-col gap-5">
+          <div className="flex flex-col gap-1">
             <p className="text-sm text-muted-foreground">{product.category.name}</p>
-            <h1 className="text-2xl font-semibold">{product.name}</h1>
+            <h1 className="text-3xl font-semibold tracking-tight">{product.name}</h1>
           </div>
-          <p className="text-sm text-muted-foreground">{product.description}</p>
-          <ProductOptions variants={product.variants} />
+          <p className="max-w-md text-sm leading-relaxed text-muted-foreground">
+            {product.description}
+          </p>
+          <div className="border-t border-border pt-5">
+            <ProductOptions variants={product.variants} />
+          </div>
         </div>
       </div>
 
-      <section className="mt-12">
+      <section className="mt-16 max-w-2xl">
         <h2 className="text-lg font-semibold">Reseñas</h2>
         <div className="mt-4">
           <ReviewList reviews={product.reviews} />

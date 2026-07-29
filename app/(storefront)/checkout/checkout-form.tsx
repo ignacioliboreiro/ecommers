@@ -1,179 +1,146 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useEffect, useRef, useState, useTransition } from "react";
+import { FlaskConical, Truck } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { formatCents } from "@/lib/money";
 import { initiatePayment } from "@/src/modules/orders/actions/initiate-payment";
+import {
+  quoteShipping,
+  type ShippingEstimate,
+} from "@/src/modules/orders/actions/quote-shipping";
+import { INITIATE_PAYMENT_INITIAL_STATE } from "@/src/modules/orders/types/payment-state";
 import { MercadoPagoCheckout } from "@/src/modules/orders/components/mercadopago-checkout";
 
-const INITIAL_STATE = {
-  orderId: "",
-  paymentProvider: "STRIPE" as "STRIPE" | "MERCADO_PAGO",
-  totalCents: 0,
-  clientSecret: undefined as string | undefined,
-  preferenceId: undefined as string | undefined,
-  initPoint: undefined as string | undefined,
-  providerRef: "",
-  payerEmail: undefined as string | undefined,
-  error: null as string | null,
-};
-
-export function CheckoutForm() {
-  const [state, formAction, pending] = useActionState(initiatePayment, INITIAL_STATE);
+/**
+ * `demoMode` llega por props desde el Server Component: `STORE_MODE` no existe
+ * en el bundle del navegador (no es NEXT_PUBLIC_), y de todas formas el modo lo
+ * decide el servidor — acá solo cambia lo que se muestra.
+ */
+export function CheckoutForm({ demoMode }: { demoMode: boolean }) {
+  const [state, formAction, pending] = useActionState(
+    initiatePayment,
+    INITIATE_PAYMENT_INITIAL_STATE
+  );
 
   const orderCreated = !!state.orderId && !state.error;
 
   return (
     <div className="space-y-6">
       <form action={formAction} className="space-y-6">
-        <div className="space-y-4">
-          <h2 className="text-lg font-medium">Dirección de envío</h2>
-          <div className="p-4 bg-card border space-y-4">
+        <fieldset className="space-y-4">
+          <legend className="text-lg font-medium">Dirección de envío</legend>
+          <div className="space-y-4 rounded-lg border border-border p-4">
             <div className="space-y-2">
-              <label htmlFor="street" className="text-sm font-medium">
-                Calle *
-              </label>
-              <input
-                id="street"
-                name="street"
-                type="text"
-                required
-                className="input input-bordered w-full"
-                placeholder="Calle y número"
-              />
+              <Label htmlFor="street">Calle *</Label>
+              <Input id="street" name="street" required placeholder="Calle y número" />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
-                <label htmlFor="city" className="text-sm font-medium">
-                  Ciudad *
-                </label>
-                <input
-                  id="city"
-                  name="city"
-                  type="text"
-                  required
-                  className="input input-bordered w-full"
-                  placeholder="Ciudad"
-                />
+                <Label htmlFor="city">Ciudad *</Label>
+                <Input id="city" name="city" required placeholder="Ciudad" />
               </div>
               <div className="space-y-2">
-                <label htmlFor="state" className="text-sm font-medium">
-                  Provincia/Estado *
-                </label>
-                <input
-                  id="state"
-                  name="state"
-                  type="text"
-                  required
-                  className="input input-bordered w-full"
-                  placeholder="Provincia/Estado"
-                />
+                <Label htmlFor="state">Provincia *</Label>
+                <Input id="state" name="state" required placeholder="Provincia" />
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
-                <label htmlFor="postalCode" className="text-sm font-medium">
-                  Código Postal *
-                </label>
-                <input
-                  id="postalCode"
-                  name="postalCode"
-                  type="text"
-                  required
-                  className="input input-bordered w-full"
-                  placeholder="Código Postal"
-                />
+                <Label htmlFor="postalCode">Código postal *</Label>
+                <Input id="postalCode" name="postalCode" required placeholder="1425" />
               </div>
               <div className="space-y-2">
-                <label htmlFor="country" className="text-sm font-medium">
-                  País *
-                </label>
-                <input
-                  id="country"
-                  name="country"
-                  type="text"
-                  required
-                  className="input input-bordered w-full"
-                  placeholder="País"
-                />
+                <Label htmlFor="country">País *</Label>
+                <Input id="country" name="country" required defaultValue="AR" />
               </div>
             </div>
 
             <div className="space-y-2">
-              <label htmlFor="phone" className="text-sm font-medium">
-                Teléfono (opcional)
-              </label>
-              <input
-                id="phone"
-                name="phone"
-                type="tel"
-                className="input input-bordered w-full"
-                placeholder="Teléfono de contacto"
-              />
+              <Label htmlFor="phone">Teléfono (opcional)</Label>
+              <Input id="phone" name="phone" type="tel" placeholder="Teléfono de contacto" />
             </div>
           </div>
-        </div>
 
-        <div className="space-y-4">
-          <h2 className="text-lg font-medium">Método de pago</h2>
-          <div className="space-y-2">
-            <label className="flex items-center space-x-2">
-              <input
-                type="radio"
-                name="paymentProviderType"
-                value="STRIPE"
-                defaultChecked
-                className="radio"
-              />
-              Stripe (Tarjeta de crédito/débito)
-            </label>
-            <label className="flex items-center space-x-2">
-              <input
-                type="radio"
-                name="paymentProviderType"
-                value="MERCADO_PAGO"
-                className="radio"
-              />
-              Mercado Pago
-            </label>
-          </div>
-        </div>
+          <ShippingEstimateBox />
+        </fieldset>
 
-        <div className="space-y-4">
-          <h2 className="text-lg font-medium">Contacto</h2>
+        <fieldset className="space-y-4">
+          <legend className="text-lg font-medium">Método de pago</legend>
+          {demoMode ? (
+            <div className="flex items-start gap-2 rounded-lg border border-border bg-muted/40 p-4 text-sm">
+              <FlaskConical className="mt-0.5 size-4 shrink-0 text-muted-foreground" aria-hidden />
+              <div>
+                <p className="font-medium">Pago simulado</p>
+                <p className="text-muted-foreground">
+                  La tienda está en modo demostración. Al continuar vas a poder
+                  elegir si el pago se aprueba o se rechaza, sin ingresar ninguna
+                  tarjeta.
+                </p>
+              </div>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-2 rounded-lg border border-border p-4">
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="radio"
+                  name="paymentProviderType"
+                  value="MERCADO_PAGO"
+                  defaultChecked
+                  className="size-4 accent-primary"
+                />
+                Mercado Pago (tarjeta de crédito o débito)
+              </label>
+            </div>
+          )}
+        </fieldset>
+
+        <fieldset className="space-y-4">
+          <legend className="text-lg font-medium">Contacto</legend>
           <div className="space-y-2">
-            <label htmlFor="payerEmail" className="text-sm font-medium">
-              Email (opcional)
-            </label>
-            <input
+            <Label htmlFor="payerEmail">Email</Label>
+            <Input
               id="payerEmail"
               name="payerEmail"
               type="email"
               autoComplete="email"
-              className="input input-bordered w-full max-w-xs"
               placeholder="tu@email.com"
+              className="max-w-sm"
             />
+            <p className="text-xs text-muted-foreground">
+              Ahí te enviamos la confirmación del pedido.
+            </p>
           </div>
-        </div>
+        </fieldset>
 
         {state.error && (
-          <div className="p-4 bg-destructive/10 border border-destructive text-destructive rounded-md">
+          <div
+            role="alert"
+            className="rounded-lg border border-destructive/40 bg-destructive/5 p-4 text-sm text-destructive"
+          >
             {state.error}
           </div>
         )}
 
         {!orderCreated && (
-          <Button type="submit" disabled={pending} className="w-full">
-            {pending ? "Procesando pago..." : "Completar compra"}
+          <Button type="submit" disabled={pending} size="lg" className="w-full">
+            {pending
+              ? "Procesando..."
+              : demoMode
+                ? "Continuar al pago simulado"
+                : "Completar compra"}
           </Button>
         )}
       </form>
 
       {orderCreated && state.paymentProvider === "MERCADO_PAGO" && (
-        <div className="p-4 bg-card border">
-          <h2 className="text-lg font-medium mb-4">Pagá con tarjeta</h2>
+        <div className="rounded-lg border border-border p-4">
+          <h2 className="mb-4 text-lg font-medium">Pagá con tarjeta</h2>
           <MercadoPagoCheckout
             orderId={state.orderId}
             amountCents={state.totalCents}
@@ -183,9 +150,74 @@ export function CheckoutForm() {
       )}
 
       {orderCreated && state.paymentProvider === "STRIPE" && (
-        <div className="p-4 bg-success/10 border border-success rounded-md">
-          <p className="text-success">
-            Orden creada exitosamente ({state.clientSecret ? "clientSecret listo" : "esperando pago"}).
+        <div className="rounded-lg border border-border p-4 text-sm">
+          Orden creada ({state.clientSecret ? "clientSecret listo" : "esperando pago"}).
+          El Payment Element de Stripe todavía no está montado.
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Cotización de envío en vivo. Escucha provincia y código postal del mismo
+ * formulario y consulta al adapter cuando ambos están completos.
+ *
+ * Lee los valores del DOM en vez de manejar estado controlado para no convertir
+ * todo el formulario en componente controlado por una sola feature accesoria.
+ */
+function ShippingEstimateBox() {
+  const [estimate, setEstimate] = useState<ShippingEstimate | null>(null);
+  const [isPending, startTransition] = useTransition();
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const form = containerRef.current?.closest("form");
+    if (!form) return;
+
+    let timeout: ReturnType<typeof setTimeout>;
+
+    const recalculate = () => {
+      clearTimeout(timeout);
+      // Debounce: se dispara al tipear el CP, no queremos una llamada por tecla.
+      timeout = setTimeout(() => {
+        const data = new FormData(form);
+        const state = String(data.get("state") ?? "");
+        const postalCode = String(data.get("postalCode") ?? "");
+        const city = String(data.get("city") ?? "");
+
+        if (!state.trim() || !postalCode.trim()) {
+          setEstimate(null);
+          return;
+        }
+
+        startTransition(async () => {
+          setEstimate(await quoteShipping(state, postalCode, city));
+        });
+      }, 400);
+    };
+
+    form.addEventListener("input", recalculate);
+    return () => {
+      clearTimeout(timeout);
+      form.removeEventListener("input", recalculate);
+    };
+  }, []);
+
+  return (
+    <div ref={containerRef} aria-live="polite" className="min-h-5">
+      {estimate && (
+        <div className="flex items-start gap-2 text-sm">
+          <Truck className="mt-0.5 size-4 shrink-0 text-muted-foreground" aria-hidden />
+          <p className={isPending ? "text-muted-foreground" : undefined}>
+            <span className="font-medium">
+              {estimate.freeShippingApplied
+                ? "Envío gratis"
+                : formatCents(estimate.costCents)}
+            </span>
+            {" — "}
+            {estimate.serviceName}, llega en {estimate.estimatedDaysMin}-
+            {estimate.estimatedDaysMax} días hábiles.
           </p>
         </div>
       )}

@@ -1,5 +1,7 @@
 "use client";
 
+import { Check } from "lucide-react";
+import { AnimatePresence, motion } from "motion/react";
 import { useActionState, useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -95,50 +97,68 @@ export function ProductOptions({ variants }: ProductOptionsProps) {
             aria-labelledby={`attr-label-${key}`}
             className="flex flex-wrap gap-2"
           >
-            {attributeValues.get(key)?.map((value) => (
-              <button
-                key={value}
-                type="button"
-                onClick={() => setSelected((prev) => ({ ...prev, [key]: value }))}
-                aria-pressed={selected[key] === value}
-                className={`rounded-md border px-3 py-1.5 text-sm transition-colors outline-none focus-visible:ring-3 focus-visible:ring-ring/50 ${
-                  selected[key] === value
-                    ? "border-foreground bg-foreground text-background"
-                    : "border-input hover:border-foreground"
-                }`}
-              >
-                {value}
-              </button>
-            ))}
+            {attributeValues.get(key)?.map((value) => {
+              const isSelected = selected[key] === value;
+              return (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => setSelected((prev) => ({ ...prev, [key]: value }))}
+                  aria-pressed={isSelected}
+                  className={`relative overflow-hidden rounded-md border px-3 py-1.5 text-sm transition-colors outline-none focus-visible:ring-3 focus-visible:ring-ring/50 ${
+                    isSelected
+                      ? "border-primary text-primary-foreground"
+                      : "border-input text-foreground hover:border-foreground/40"
+                  }`}
+                >
+                  {isSelected && (
+                    <motion.span
+                      layoutId={`pill-${key}`}
+                      className="absolute inset-0 rounded-md bg-primary"
+                      transition={{ type: "spring", stiffness: 500, damping: 35 }}
+                    />
+                  )}
+                  <span className="relative">{value}</span>
+                </button>
+              );
+            })}
           </div>
         </div>
       ))}
 
-      <div className="flex flex-col gap-1">
-        {activeVariant ? (
-          <>
-            <div className="flex items-baseline gap-2">
-              <span className="text-2xl font-semibold">
-                {formatCents(activeVariant.priceCents)}
-              </span>
-              {hasDiscount && (
-                <span className="text-muted-foreground line-through">
-                  {formatCents(activeVariant.compareAtCents!)}
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={activeVariant?.id ?? "unavailable"}
+          initial={{ opacity: 0, y: 4 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.18 }}
+          className="flex flex-col gap-1"
+        >
+          {activeVariant ? (
+            <>
+              <div className="flex items-baseline gap-2">
+                <span className="text-2xl font-semibold tabular-nums">
+                  {formatCents(activeVariant.priceCents)}
                 </span>
-              )}
-            </div>
-            <span className="text-sm text-muted-foreground">
-              {activeVariant.stock > 0
-                ? `${activeVariant.stock} unidades disponibles`
-                : "Sin stock"}
+                {hasDiscount && (
+                  <span className="text-muted-foreground line-through tabular-nums">
+                    {formatCents(activeVariant.compareAtCents!)}
+                  </span>
+                )}
+              </div>
+              <span className="text-sm text-muted-foreground">
+                {activeVariant.stock > 0
+                  ? `${activeVariant.stock} unidades disponibles`
+                  : "Sin stock"}
+              </span>
+            </>
+          ) : (
+            <span className="text-sm text-destructive">
+              Esta combinación no está disponible.
             </span>
-          </>
-        ) : (
-          <span className="text-sm text-destructive">
-            Esta combinación no está disponible.
-          </span>
-        )}
-      </div>
+          )}
+        </motion.div>
+      </AnimatePresence>
 
       <form action={formAction} className="flex flex-col gap-2">
         <input type="hidden" name="variantId" value={activeVariant?.id ?? ""} />
@@ -150,16 +170,31 @@ export function ProductOptions({ variants }: ProductOptionsProps) {
         >
           {pending ? "Agregando..." : "Agregar al carrito"}
         </Button>
-        {state?.status === "error" && (
-          <p className="text-sm text-destructive" role="alert">
-            {state.message}
-          </p>
-        )}
-        {state?.status === "success" && (
-          <p className="text-sm text-green-600 dark:text-green-500" role="status">
-            {state.message}
-          </p>
-        )}
+        <AnimatePresence>
+          {state?.status === "error" && (
+            <motion.p
+              initial={{ opacity: 0, y: -4 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+              className="text-sm text-destructive"
+              role="alert"
+            >
+              {state.message}
+            </motion.p>
+          )}
+          {state?.status === "success" && (
+            <motion.p
+              initial={{ opacity: 0, y: -4 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+              className="flex items-center gap-1.5 text-sm text-green-500"
+              role="status"
+            >
+              <Check className="size-4" aria-hidden />
+              {state.message}
+            </motion.p>
+          )}
+        </AnimatePresence>
       </form>
     </div>
   );

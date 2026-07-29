@@ -19,7 +19,7 @@ export function ReviewList({ reviews }: { reviews: ProductReview[] }) {
               <div className="flex items-center justify-between">
                 <span className="font-medium">{review.user.name ?? "Usuario"}</span>
                 <span aria-label={`${review.rating} de 5 estrellas`}>
-                  <span>{"★".repeat(review.rating)}</span>
+                  <span className="text-primary">{"★".repeat(review.rating)}</span>
                   <span className="text-muted-foreground">
                     {"★".repeat(5 - review.rating)}
                   </span>

@@ -1,4 +1,7 @@
 import Link from "next/link";
+import { ChevronLeft, ChevronRight } from "lucide-react";
+
+import { Button } from "@/components/ui/button";
 
 interface PaginationProps {
   page: number;
@@ -13,24 +16,28 @@ export function Pagination({ page, pageCount, buildHref }: PaginationProps) {
   const hasNext = page < pageCount;
 
   return (
-    <nav className="flex items-center justify-center gap-4">
-      {hasPrev ? (
-        <Link href={buildHref(page - 1)} className="text-sm underline">
-          Anterior
-        </Link>
-      ) : (
-        <span className="text-sm text-muted-foreground">Anterior</span>
-      )}
-      <span className="text-sm text-muted-foreground">
+    <nav className="flex items-center justify-center gap-3">
+      <Button
+        variant="outline"
+        size="icon"
+        disabled={!hasPrev}
+        render={hasPrev ? <Link href={buildHref(page - 1)} aria-label="Página anterior" /> : undefined}
+        nativeButton={hasPrev ? false : undefined}
+      >
+        <ChevronLeft aria-hidden />
+      </Button>
+      <span className="text-sm text-muted-foreground tabular-nums">
         Página {page} de {pageCount}
       </span>
-      {hasNext ? (
-        <Link href={buildHref(page + 1)} className="text-sm underline">
-          Siguiente
-        </Link>
-      ) : (
-        <span className="text-sm text-muted-foreground">Siguiente</span>
-      )}
+      <Button
+        variant="outline"
+        size="icon"
+        disabled={!hasNext}
+        render={hasNext ? <Link href={buildHref(page + 1)} aria-label="Página siguiente" /> : undefined}
+        nativeButton={hasNext ? false : undefined}
+      >
+        <ChevronRight aria-hidden />
+      </Button>
     </nav>
   );
 }

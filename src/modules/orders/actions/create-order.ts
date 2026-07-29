@@ -1,4 +1,7 @@
+import type { PaymentProviderType } from "@prisma/client";
+
 import { prisma } from "@/lib/prisma";
+import { getShippingProvider } from "@/lib/shipping";
 import type { CartWithItems } from "@/src/modules/cart/types/cart";
 
 export async function createOrderFromCart(
@@ -12,7 +15,7 @@ export async function createOrderFromCart(
     country: string;
     phone?: string;
   } | null,
-  paymentProvider: "STRIPE" | "MERCADO_PAGO",
+  paymentProvider: PaymentProviderType,
   contactEmail?: string | null
 ) {
   // 1. Validate cart
@@ -148,7 +151,27 @@ export async function createOrderFromCart(
   );
   const discountCents = 0; // TODO: implement coupons
   const taxCents = 0; // TODO: implement tax calculation
-  const shippingCents = 0; // TODO: implement shipping calculation
+
+  // Envío: se cotiza con el adapter configurado (simulado en demo, courier real
+  // en producción). Esta cotización es la autoritativa — la que el checkout
+  // muestra antes de confirmar es solo una estimación del cliente, y se
+  // recalcula acá para que un formulario manipulado no cambie el precio.
+  const shippingProvider = getShippingProvider();
+  const shippingQuote = await shippingProvider.calculateShippingCost(
+    {
+      city: addressSnapshot.city,
+      state: addressSnapshot.state,
+      postalCode: addressSnapshot.postalCode,
+      country: addressSnapshot.country,
+    },
+    cart.items.map((item) => ({
+      variantId: item.variantId,
+      quantity: item.quantity,
+      unitPriceCents: item.variant.priceCents,
+    }))
+  );
+  const shippingCents = shippingQuote.costCents;
+
   const totalCents = subtotalCents + shippingCents + taxCents - discountCents;
 
   // 6. Set expiration for pending payment (1 hour from now)
@@ -167,10 +190,16 @@ export async function createOrderFromCart(
         taxCents,
         shippingCents,
         totalCents,
-        // TODO: make configurable based on location. Mercado Pago Argentina
-        // solo cobra en ARS (los precios del catálogo ya están en ARS, ver
-        // formatCents en lib/money.ts) — con USD la API rechaza el monto.
-        currency: paymentProvider === "MERCADO_PAGO" ? "ARS" : "USD",
+        // Los precios del catálogo están en ARS (ver formatCents en
+        // lib/money.ts), así que ARS es el default correcto: Mercado Pago
+        // Argentina rechaza montos en USD, y el pago simulado tiene que mostrar
+        // los mismos importes que el catálogo.
+        //
+        // ⚠️ El caso STRIPE queda en USD por compatibilidad con lo que había,
+        // pero es un bug latente: cobraría el número de centavos del catálogo
+        // como si fueran dólares. Hay que resolverlo al montar el Payment
+        // Element (ver deuda técnica en PROJECT_CONTEXT.md).
+        currency: paymentProvider === "STRIPE" ? "USD" : "ARS",
         paymentProvider,
         contactEmail: contactEmail ?? null,
         // Denormalized address (note: Order model uses addressLine1 for street)
