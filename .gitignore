@@ -32,6 +32,9 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+# ...excepto la plantilla: es lo que necesita alguien que instala el proyecto
+# desde cero, y no contiene ningún valor real.
+!.env.example
 
 # vercel
 .vercel

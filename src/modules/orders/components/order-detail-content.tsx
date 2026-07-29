@@ -1,9 +1,15 @@
 import Image from "next/image";
 import Link from "next/link";
+import { FileText } from "lucide-react";
 
 import { formatCents } from "@/lib/money";
 import { toVariantAttributes } from "@/src/modules/catalog/types/catalog";
 import type { OrderWithItems } from "@/src/modules/orders/types/order";
+
+import { OrderTracking } from "./order-tracking";
+
+/** Estados en los que ya hay un comprobante para descargar. */
+const INVOICEABLE_STATUSES = ["PAID", "FULFILLED", "REFUNDED"];
 
 function attributesLabel(attributes: Record<string, string>): string {
   return Object.entries(attributes)
@@ -19,8 +25,14 @@ function attributesLabel(attributes: Record<string, string>): string {
  * auditoría en el admin).
  */
 export function OrderDetailContent({ order }: { order: OrderWithItems }) {
+  const hasInvoice = INVOICEABLE_STATUSES.includes(order.status);
+
   return (
     <>
+      {/* Server Component async dentro de un padre sincrónico: válido, y evita
+          volver async a todo este componente por una sección opcional. */}
+      <OrderTracking order={order} />
+
       <section className="mb-8">
         <h2 className="mb-4 text-lg font-medium">Productos</h2>
         <div className="divide-y divide-border rounded-lg border border-border">
@@ -92,6 +104,16 @@ export function OrderDetailContent({ order }: { order: OrderWithItems }) {
             <dd className="tabular-nums">{formatCents(order.totalCents)}</dd>
           </div>
         </dl>
+
+        {hasInvoice && (
+          <a
+            href={`/api/orders/${order.id}/invoice`}
+            className="mt-4 inline-flex items-center gap-1.5 border-t border-border pt-4 text-sm font-medium underline"
+          >
+            <FileText className="size-4" aria-hidden />
+            Descargar comprobante (PDF)
+          </a>
+        )}
       </section>
 
       <section className="rounded-lg border border-border p-4">

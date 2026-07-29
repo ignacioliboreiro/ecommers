@@ -2,6 +2,7 @@ import "server-only";
 
 import { MercadoPagoConfig, Payment } from "mercadopago";
 
+import { isDemoMode } from "@/lib/config/store-mode";
 import { prisma } from "@/lib/prisma";
 
 /**
@@ -11,6 +12,16 @@ import { prisma } from "@/lib/prisma";
  * confirma — este endpoint solo dispara el cobro.
  */
 export async function POST(request: Request) {
+  // Defensa en profundidad: en modo demo el checkout no monta el Brick de MP,
+  // pero esta ruta es pública. Sin este chequeo, un POST directo podría iniciar
+  // un cobro real desde una instalación de demostración.
+  if (isDemoMode()) {
+    return Response.json(
+      { error: "La tienda está en modo demostración: no se procesan pagos reales." },
+      { status: 403 }
+    );
+  }
+
   const body = await request.json();
   const { orderId, ...brickData } = body as { orderId?: string; [key: string]: unknown };
 

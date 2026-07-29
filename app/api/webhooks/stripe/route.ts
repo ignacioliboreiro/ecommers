@@ -1,5 +1,8 @@
 import { stripeAdapter } from "@/lib/payments";
-import { processPaymentEvent } from "@/src/modules/payments/actions/process-payment-event";
+import {
+  paymentEventResultToResponse,
+  processPaymentEvent,
+} from "@/src/modules/payments/actions/process-payment-event";
 
 export async function POST(request: Request) {
   try {
@@ -15,7 +18,7 @@ export async function POST(request: Request) {
       return new Response("Unsupported event type", { status: 200 });
     }
 
-    return await processPaymentEvent(event);
+    return paymentEventResultToResponse(await processPaymentEvent(event));
   } catch (err) {
     console.error("Stripe webhook error:", err);
     return new Response("Webhook error", { status: 500 });

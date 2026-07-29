@@ -9,8 +9,9 @@ import type {
   PaymentIntentResult,
   PaymentOrderInput,
   PaymentProvider,
+  PaymentStatusResult,
   WebhookVerifyContext,
-} from "@/src/modules/payments/types/payment-provider";
+} from "./types";
 
 function getConfig(): MercadoPagoConfig {
   const accessToken = process.env.MERCADOPAGO_ACCESS_TOKEN;
@@ -40,6 +41,7 @@ function mapStatus(status: string | undefined): PaymentEventStatus {
 
 export const mercadoPagoAdapter: PaymentProvider = {
   type: "MERCADO_PAGO",
+  isReal: true,
 
   async createPaymentIntent(order: PaymentOrderInput): Promise<PaymentIntentResult> {
     const preferenceClient = new Preference(getConfig());
@@ -127,6 +129,23 @@ export const mercadoPagoAdapter: PaymentProvider = {
       status: mapStatus(payment.status),
       providerRef: String(payment.id ?? body.data.id),
       rawType: body.action ?? body.type,
+    };
+  },
+
+  async getPaymentStatus(providerRef: string): Promise<PaymentStatusResult> {
+    const payment = await new Payment(getConfig()).get({ id: providerRef });
+
+    return {
+      provider: "MERCADO_PAGO",
+      providerRef,
+      status: mapStatus(payment.status),
+      rawStatus: payment.status ?? "unknown",
+      // MP maneja unidades, no centavos.
+      amountCents:
+        typeof payment.transaction_amount === "number"
+          ? Math.round(payment.transaction_amount * 100)
+          : undefined,
+      currency: payment.currency_id ?? undefined,
     };
   },
 };

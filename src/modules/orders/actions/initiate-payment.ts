@@ -1,45 +1,50 @@
 "use server";
 
-import { prisma } from "@/lib/prisma";
-import { getPaymentProvider } from "@/lib/payments";
-import { getCartWithItems } from "@/src/modules/cart/actions/get-cart";
-import { createOrderFromCart } from "./create-order";
+import type { PaymentProviderType } from "@prisma/client";
 import { revalidatePath } from "next/cache";
-import type { PaymentIntentResult } from "@/src/modules/payments/types/payment-provider";
+import { redirect } from "next/navigation";
+
+import { getPaymentProvider, resolvePaymentProviderType } from "@/lib/payments";
+import type { PaymentIntentResult } from "@/lib/payments/types";
+import { prisma } from "@/lib/prisma";
+import { getCartWithItems } from "@/src/modules/cart/actions/get-cart";
+import type { InitiatePaymentState } from "@/src/modules/orders/types/payment-state";
+
+import { createOrderFromCart } from "./create-order";
 
 export async function initiatePayment(
-  state: {
-    orderId: string;
-    paymentProvider: "STRIPE" | "MERCADO_PAGO";
-    totalCents: number;
-    clientSecret: string | undefined;
-    preferenceId: string | undefined;
-    initPoint: string | undefined;
-    providerRef: string;
-    payerEmail: string | undefined;
-    error: string | null;
-  },
+  _state: InitiatePaymentState,
   formData: FormData
-) {
-  // Get form data from formData parameter
+): Promise<InitiatePaymentState> {
   const addressId = formData.get("addressId") as string | null;
   const street = formData.get("street") as string | null;
   const city = formData.get("city") as string | null;
-  const stateValue = formData.get("state") as string | null; // Renamed to avoid conflict with parameter
+  const stateValue = formData.get("state") as string | null;
   const postalCode = formData.get("postalCode") as string | null;
   const country = formData.get("country") as string | null;
   const phone = formData.get("phone") as string | undefined;
-  const paymentProviderType = formData.get("paymentProviderType") as "STRIPE" | "MERCADO_PAGO";
-  const payerEmail = formData.get("payerEmail") as string | undefined;
+  const payerEmail = (formData.get("payerEmail") as string | null) || undefined;
 
-  // 1. Get the current cart with items (needed for order creation)
+  const requestedProvider = formData.get("paymentProviderType");
+
+  /**
+   * El proveedor NO sale del formulario: sale de `resolvePaymentProviderType`,
+   * que en modo demo devuelve siempre MOCK. Lo que manda el form es apenas una
+   * preferencia y solo se respeta en producción. Así una instalación en demo no
+   * puede iniciar un cobro real ni manipulando el HTML.
+   */
+  const paymentProviderType = resolvePaymentProviderType(
+    typeof requestedProvider === "string" && requestedProvider
+      ? (requestedProvider as PaymentProviderType)
+      : undefined
+  );
+
   const cart = await getCartWithItems();
 
   if (!cart || cart.items.length === 0) {
     throw new Error("Cart is empty");
   }
 
-  // 2. Prepare address details if provided via form
   const addressDetails =
     street && city && stateValue && postalCode && country
       ? {
@@ -48,11 +53,10 @@ export async function initiatePayment(
           state: stateValue,
           postalCode,
           country,
-          phone: phone, // Keep as undefined if not provided (matches optional param in createOrderFromCart)
+          phone,
         }
       : null;
 
-  // 3. Create the order from the cart
   const order = await createOrderFromCart(
     cart,
     addressId,
@@ -61,48 +65,45 @@ export async function initiatePayment(
     payerEmail
   );
 
-  // 4. Prepare payment data
-  const paymentOrderInput = {
+  const paymentProvider = getPaymentProvider(paymentProviderType);
+  const paymentResult = await paymentProvider.createPaymentIntent({
     orderId: order.id,
     amountCents: order.totalCents,
-    currency: order.currency, // use the currency from the order
+    currency: order.currency,
     description: `Pedido #${order.id}`,
     payerEmail,
-  };
-
-  // 5. Get the appropriate payment provider and initiate payment
-  const paymentProvider = getPaymentProvider(paymentProviderType);
-  const paymentResult = await paymentProvider.createPaymentIntent(paymentOrderInput);
-
-  // 6. Update the order with the payment reference
-  await prisma.order.update({
-    where: { id: order.id },
-    data: {
-      paymentRef: paymentResult.providerRef,
-    },
   });
 
-  // 7. Revalidate paths. Ojo: los route groups de Next (ej. "(storefront)")
-  // son solo organización de carpetas y NO forman parte de la URL — el path
-  // real acá es "/cart", no "/(storefront)/cart".
-  revalidatePath("/cart");
-  revalidatePath(`/order/${order.id}`);
+  await prisma.order.update({
+    where: { id: order.id },
+    data: { paymentRef: paymentResult.providerRef },
+  });
 
-  // 8. Return the payment data needed by the frontend - shaped to match useActionState expectations
+  // Ojo: los route groups de Next (ej. "(storefront)") son solo organización de
+  // carpetas y NO forman parte de la URL — el path real acá es "/cart".
+  revalidatePath("/cart");
+  revalidatePath(`/orders/${order.id}`);
+
+  // El mock no monta ningún widget: manda a una página de esta misma app donde
+  // se elige el resultado del pago. `redirect` lanza, así que nada de abajo corre.
+  if (paymentResult.provider === "MOCK") {
+    redirect(paymentResult.checkoutUrl);
+  }
+
   return {
     orderId: order.id,
     paymentProvider: paymentProviderType,
     totalCents: order.totalCents,
     clientSecret:
-      paymentProviderType === "STRIPE"
+      paymentResult.provider === "STRIPE"
         ? (paymentResult as Extract<PaymentIntentResult, { provider: "STRIPE" }>).clientSecret
         : undefined,
     preferenceId:
-      paymentProviderType === "MERCADO_PAGO"
+      paymentResult.provider === "MERCADO_PAGO"
         ? (paymentResult as Extract<PaymentIntentResult, { provider: "MERCADO_PAGO" }>).preferenceId
         : undefined,
     initPoint:
-      paymentProviderType === "MERCADO_PAGO"
+      paymentResult.provider === "MERCADO_PAGO"
         ? (paymentResult as Extract<PaymentIntentResult, { provider: "MERCADO_PAGO" }>).initPoint
         : undefined,
     providerRef: paymentResult.providerRef,

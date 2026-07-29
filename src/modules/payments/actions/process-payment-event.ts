@@ -1,18 +1,38 @@
 import "server-only";
 
-import { Prisma } from "@prisma/client";
+import { Prisma, type OrderStatus } from "@prisma/client";
 import { Resend } from "resend";
 
+import type { PaymentEvent } from "@/lib/payments/types";
 import { prisma } from "@/lib/prisma";
-import type { PaymentEvent } from "@/src/modules/payments/types/payment-provider";
+import { getShippingProvider } from "@/lib/shipping";
 
 /**
- * Aplica un PaymentEvent ya normalizado (Stripe o Mercado Pago) a la Order
- * correspondiente. Compartido por ambos webhooks porque la lógica de negocio
- * (idempotencia, stock, carrito, email) es idéntica — solo cambia cómo cada
- * proveedor entrega y firma el evento.
+ * Resultado de aplicar un evento de pago. Se devuelve un objeto y no un
+ * `Response` porque este código tiene dos callers con formas distintas:
+ *
+ *   - Los webhooks (`/api/webhooks/*`) necesitan un `Response` HTTP.
+ *   - La server action del pago simulado necesita saber qué pasó para redirigir.
+ *
+ * Que ambos pasen por acá es el punto del diseño: el flujo simulado no tiene su
+ * propia lógica de actualización de órdenes. Si la tuviera, una demo podría
+ * funcionar mientras el flujo real está roto.
  */
-export async function processPaymentEvent(event: PaymentEvent): Promise<Response> {
+export interface ProcessPaymentEventResult {
+  outcome: "applied" | "duplicate" | "order-not-found";
+  /** Estado en el que quedó la orden. Ausente si la orden no existe. */
+  status?: OrderStatus;
+}
+
+/**
+ * Aplica un PaymentEvent ya normalizado (Stripe, Mercado Pago o simulado) a la
+ * Order correspondiente. Compartido por todos los proveedores porque la lógica
+ * de negocio (idempotencia, stock, carrito, envío, email) es idéntica — solo
+ * cambia cómo cada proveedor entrega y firma el evento.
+ */
+export async function processPaymentEvent(
+  event: PaymentEvent
+): Promise<ProcessPaymentEventResult> {
   const order = await prisma.order.findUnique({
     where: { id: event.orderId },
     include: {
@@ -22,10 +42,10 @@ export async function processPaymentEvent(event: PaymentEvent): Promise<Response
   });
 
   if (!order) {
-    return new Response("Order not found", { status: 404 });
+    return { outcome: "order-not-found" };
   }
 
-  let newStatus: typeof order.status;
+  let newStatus: OrderStatus;
   let stockAction: "CONFIRM" | "CANCEL" | null = null;
   let shouldClearCart = false;
 
@@ -45,7 +65,12 @@ export async function processPaymentEvent(event: PaymentEvent): Promise<Response
     // este webhook es un reintento/duplicado — no repetir ningún efecto.
     try {
       await tx.paymentEvent.create({
-        data: { provider: event.provider, providerRef: event.providerRef, rawType: event.rawType },
+        data: {
+          provider: event.provider,
+          providerRef: event.providerRef,
+          rawType: event.rawType,
+          simulated: event.simulated ?? false,
+        },
       });
     } catch (err) {
       if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
@@ -124,17 +149,103 @@ export async function processPaymentEvent(event: PaymentEvent): Promise<Response
     console.log(
       `[${event.provider} Webhook] Event ${event.providerRef} ya procesado, ignorando reintento.`
     );
-    return new Response(JSON.stringify({ received: true, duplicate: true }), { status: 200 });
+    return { outcome: "duplicate", status: order.status };
   }
 
   if (newStatus === "PAID") {
     console.log(`[${event.provider} Webhook] Order ${order.id} paid successfully`);
-    await sendOrderConfirmationEmail(order.id, order.contactEmail ?? order.user?.email ?? null, order.totalCents);
+
+    // Envío y email son best-effort y van *fuera* de la transacción: son efectos
+    // externos, y un fallo de cualquiera de los dos no debe revertir un pago ya
+    // cobrado ni hacer que el proveedor reintente el webhook.
+    await createShipmentForOrder(order.id);
+    await sendOrderConfirmationEmail(
+      order.id,
+      order.contactEmail ?? order.user?.email ?? null,
+      order.totalCents
+    );
   } else if (newStatus === "CANCELLED") {
     console.log(`[${event.provider} Webhook] Order ${order.id} payment failed/cancelled`);
   }
 
-  return new Response(JSON.stringify({ received: true }), { status: 200 });
+  return { outcome: "applied", status: newStatus };
+}
+
+/** Traduce el resultado a la respuesta HTTP que esperan los webhooks. */
+export function paymentEventResultToResponse(result: ProcessPaymentEventResult): Response {
+  if (result.outcome === "order-not-found") {
+    return new Response("Order not found", { status: 404 });
+  }
+
+  return new Response(
+    JSON.stringify({ received: true, duplicate: result.outcome === "duplicate" }),
+    { status: 200, headers: { "content-type": "application/json" } }
+  );
+}
+
+/**
+ * Genera el envío de una orden recién pagada a través del adapter configurado.
+ *
+ * Best-effort a propósito: si el courier está caído, la orden igual quedó
+ * pagada. El pedido queda sin trackingId y se puede regenerar después (la UI
+ * muestra "preparando el envío" mientras no haya uno).
+ */
+async function createShipmentForOrder(orderId: string): Promise<void> {
+  try {
+    const order = await prisma.order.findUnique({
+      where: { id: orderId },
+      select: {
+        city: true,
+        state: true,
+        postalCode: true,
+        country: true,
+        totalCents: true,
+        trackingId: true,
+        items: { select: { variantId: true, quantity: true, priceCents: true } },
+      },
+    });
+
+    if (!order) return;
+
+    // Si ya tiene envío, no generar otro (defensa extra además de la
+    // idempotencia del PaymentEvent: generar dos etiquetas cuesta plata real).
+    if (order.trackingId) {
+      console.log(`[Shipping] Orden ${orderId} ya tiene envío ${order.trackingId}, no se regenera.`);
+      return;
+    }
+
+    const provider = getShippingProvider();
+    const shipment = await provider.createShipment({
+      orderId,
+      address: {
+        city: order.city,
+        state: order.state,
+        postalCode: order.postalCode,
+        country: order.country,
+      },
+      items: order.items.map((item) => ({
+        variantId: item.variantId,
+        quantity: item.quantity,
+        unitPriceCents: item.priceCents,
+      })),
+      declaredValueCents: order.totalCents,
+    });
+
+    await prisma.order.update({
+      where: { id: orderId },
+      data: {
+        shippingProvider: shipment.provider,
+        trackingId: shipment.trackingId,
+        shipmentCreatedAt: new Date(),
+      },
+    });
+
+    console.log(
+      `[Shipping] Envío generado para orden ${orderId} con ${shipment.provider}: ${shipment.trackingId}`
+    );
+  } catch (err) {
+    console.error(`[Shipping] No se pudo generar el envío de la orden ${orderId}:`, err);
+  }
 }
 
 async function sendOrderConfirmationEmail(

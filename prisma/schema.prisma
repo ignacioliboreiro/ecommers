@@ -179,6 +179,10 @@ enum OrderStatus {
 enum PaymentProviderType {
   STRIPE
   MERCADO_PAGO
+  // Proveedor simulado que se usa cuando STORE_MODE=demo. Es un valor de enum
+  // real (no un flag) para que una orden pagada en una demo sea distinguible
+  // de una orden pagada de verdad, para siempre y a nivel de datos.
+  MOCK
 }
 
 model Order {
@@ -196,6 +200,13 @@ model Order {
   paymentProvider PaymentProviderType
   paymentRef      String? // id de la transacción en Stripe/MP
   contactEmail    String? // payerEmail del checkout; único medio de contacto para guests
+  // Envío: qué adapter generó el envío y con qué id de tracking. Se completan
+  // cuando el pago se aprueba (ver process-payment-event.ts). `shippingProvider`
+  // es un string y no un enum a propósito: el set de couriers depende del país
+  // de la instalación y no queremos una migración por cada courier nuevo.
+  shippingProvider String?
+  trackingId       String?
+  shipmentCreatedAt DateTime?
   // Denormalized address snapshot (for historical accuracy and idempotency)
   addressLine1    String
   addressLine2    String?
@@ -238,6 +249,10 @@ model PaymentEvent {
   provider    PaymentProviderType
   providerRef String
   rawType     String
+  // true cuando el evento lo generó el adapter simulado (STORE_MODE=demo) en
+  // vez de un webhook real del proveedor. Sirve para poder distinguir/purgar
+  // datos de demostración sin adivinar por el prefijo del providerRef.
+  simulated   Boolean             @default(false)
   createdAt   DateTime            @default(now())
 
   @@unique([provider, providerRef])

@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 
 import { getOrderForAdmin, getOrderStatusHistory } from "@/src/modules/admin/actions/get-orders-admin";
 import { OrderStatusForm } from "@/src/modules/admin/components/order-status-form";
+import { PaymentStatusCheckButton } from "@/src/modules/admin/components/payment-status-check";
 import { OrderDetailContent } from "@/src/modules/orders/components/order-detail-content";
 import { OrderStatusBadge } from "@/src/modules/orders/components/order-status-badge";
 
@@ -36,6 +37,8 @@ export default async function AdminOrderDetailPage({ params }: AdminOrderDetailP
       </div>
 
       <OrderStatusForm orderId={order.id} currentStatus={order.status} />
+
+      <PaymentStatusCheckButton orderId={order.id} />
 
       <OrderDetailContent order={order} />
 
