@@ -5,6 +5,7 @@ import { ArrowUpRight } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { formatCents } from "@/lib/money";
+import { QuickAddButton } from "@/src/modules/catalog/components/quick-add-button";
 import {
   getCheapestVariant,
   type ProductListItem,
@@ -28,13 +29,25 @@ export function ProductCard({
   const delay = Math.min(index, 7) * 60;
 
   return (
-    <Link
-      href={`/products/${product.slug}`}
+    <div
       className={cn(
-        "group animate-in fade-in slide-in-from-bottom-4 fill-mode-both block h-full overflow-hidden rounded-2xl bg-card ring-1 ring-white/10 transition-all duration-300 ease-out hover:-translate-y-1 hover:ring-primary/40"
+        "group animate-in fade-in slide-in-from-bottom-4 fill-mode-both relative h-full overflow-hidden rounded-2xl bg-card ring-1 ring-white/10 transition-all duration-300 ease-out hover:-translate-y-1 hover:ring-primary/40"
       )}
       style={{ animationDelay: `${delay}ms`, animationDuration: "450ms" }}
     >
+      {/*
+        Link "overlay" que cubre toda la card: así el quick-add de abajo puede
+        vivir fuera del <a> (un <button> anidado en un <a> es HTML inválido y
+        complica el click-to-navigate) sin dejar de poder navegar tocando
+        cualquier otra parte de la card. El popover del quick-add igual se
+        ve completo porque se renderiza en un portal, fuera de este
+        `overflow-hidden`.
+      */}
+      <Link
+        href={`/products/${product.slug}`}
+        aria-label={product.name}
+        className="absolute inset-0 z-0 rounded-2xl"
+      />
       <div className="relative aspect-square overflow-hidden rounded-t-2xl bg-muted">
         {image ? (
           <Image
@@ -57,6 +70,13 @@ export function ProductCard({
         <div className="absolute right-2 bottom-2 flex size-8 items-center justify-center rounded-full bg-background/80 text-foreground opacity-0 backdrop-blur transition-all duration-300 ease-out group-hover:opacity-100 group-hover:translate-y-0 translate-y-1">
           <ArrowUpRight className="size-4" aria-hidden />
         </div>
+        {/*
+          Quick-add en la esquina opuesta a la flecha de "ver detalle": no
+          depende del hover (a diferencia de la flecha) porque en touch no hay
+          hover, y este botón es la única forma de agregar sin entrar al
+          detalle — ocultarlo detrás de un hover lo dejaría inútil en mobile.
+        */}
+        <QuickAddButton variants={product.variants} className="absolute left-2 bottom-2 z-10" />
       </div>
       <div className="flex flex-col gap-1 p-4">
         <p className="text-xs text-muted-foreground">{product.category.name}</p>
@@ -74,6 +94,6 @@ export function ProductCard({
           <span className="text-sm text-muted-foreground">Sin stock</span>
         )}
       </div>
-    </Link>
+    </div>
   );
 }
