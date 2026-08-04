@@ -20,9 +20,27 @@ export function MobileNav({
 
   useEffect(() => {
     if (!open) return;
-    document.body.style.overflow = "hidden";
+
+    // `overflow: hidden` en <body> es la técnica "obvia" para bloquear el
+    // scroll de fondo, pero es conocida por no ser confiable en iOS Safari
+    // (no evita de forma consistente el scroll/rubber-band del contenido
+    // detrás del menú, incluso con el overlay encima). La técnica robusta en
+    // iOS es fijar el <body> en su posición actual (`position: fixed` +
+    // `top` negativo con el scroll guardado) y recién ahí destrabarlo y
+    // restaurar la posición al cerrar.
+    const scrollY = window.scrollY;
+    const { style } = document.body;
+    style.position = "fixed";
+    style.top = `-${scrollY}px`;
+    style.left = "0";
+    style.right = "0";
+
     return () => {
-      document.body.style.overflow = "";
+      style.position = "";
+      style.top = "";
+      style.left = "";
+      style.right = "";
+      window.scrollTo(0, scrollY);
     };
   }, [open]);
 
