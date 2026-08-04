@@ -67,7 +67,16 @@ export function ProductCard({
             -{discountPercent}%
           </Badge>
         )}
-        <div className="absolute right-2 bottom-2 flex size-8 items-center justify-center rounded-full bg-background/80 text-foreground opacity-0 backdrop-blur transition-all duration-300 ease-out group-hover:opacity-100 group-hover:translate-y-0 translate-y-1">
+        {/*
+          Sin `backdrop-blur`: mismo motivo que el quick-add de abajo — un
+          `backdrop-filter` anidado dentro de estos dos `overflow-hidden` +
+          `rounded-2xl` (este wrapper y la card entera) puede no renderizar
+          en hardware móvil real. Este ícono es solo decorativo y gated por
+          hover, así que nunca se reportó roto, pero es la misma combinación
+          exacta de clases — se corrige acá también en vez de dejar la misma
+          bomba de tiempo sin usar.
+        */}
+        <div className="absolute right-2 bottom-2 flex size-8 items-center justify-center rounded-full bg-background/90 text-foreground opacity-0 transition-all duration-300 ease-out group-hover:opacity-100 group-hover:translate-y-0 translate-y-1">
           <ArrowUpRight className="size-4" aria-hidden />
         </div>
         {/*

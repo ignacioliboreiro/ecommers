@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { JetBrains_Mono, Outfit } from "next/font/google";
 
 import { DemoModeBanner } from "@/src/modules/layout/components/demo-mode-banner";
+import { TouchActiveFix } from "@/src/modules/layout/components/touch-active-fix";
 
 import "./globals.css";
 
@@ -44,6 +45,7 @@ export default function RootLayout({
           Acá lo hereda todo, incluido el panel admin — que el dueño de la tienda
           vea el modo de su instalación es deseable, no un efecto colateral.
         */}
+        <TouchActiveFix />
         <DemoModeBanner />
         {children}
       </body>

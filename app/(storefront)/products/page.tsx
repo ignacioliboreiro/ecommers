@@ -89,7 +89,7 @@ function CategoryChip({
     <Link
       href={href}
       className={cn(
-        "rounded-full border px-3.5 py-1.5 text-sm font-medium transition-colors",
+        "chip-feedback rounded-full border px-3.5 py-1.5 text-sm font-medium",
         active
           ? "border-primary bg-primary text-primary-foreground"
           : "border-border text-muted-foreground hover:border-foreground/30 hover:text-foreground"

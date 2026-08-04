@@ -98,8 +98,18 @@ export function QuickAddButton({
     event.stopPropagation();
   }
 
+  // Sin `backdrop-blur`: reportado por el usuario como invisible en un
+  // celular real (aunque presente y clickeable en el DOM — confirmado con
+  // Playwright en Chromium y WebKit móvil, que tampoco lo reprodujeron).
+  // `backdrop-filter` anidado dentro de dos ancestros `overflow-hidden` +
+  // `rounded-2xl` (el wrapper de la imagen y la card entera) es una
+  // combinación con bugs de renderizado documentados en motores móviles
+  // reales — a diferencia del grain de fondo, este botón es la ÚNICA forma
+  // de agregar sin entrar al detalle, así que no puede depender de un efecto
+  // que puede fallar en hardware real. Un fondo sólido semi-opaco (sin
+  // blur) logra el mismo look sin esa dependencia.
   const baseButtonClass =
-    "flex size-8 shrink-0 items-center justify-center rounded-full bg-background/80 text-foreground backdrop-blur transition-colors hover:bg-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-60";
+    "flex size-8 shrink-0 items-center justify-center rounded-full bg-background/90 text-foreground transition-colors hover:bg-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-60";
 
   if (purchasable.length === 0) {
     return (

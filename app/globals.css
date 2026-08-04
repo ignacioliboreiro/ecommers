@@ -178,6 +178,35 @@
    * fija al viewport — imperceptible para un patrón de ruido repetitivo sin
    * ningún punto de referencia visual.
    */
+  /*
+   * Feedback de dos tiempos para los chips de categoría del catálogo
+   * (Todos/Audio/Cámaras/etc.): al tocar, un "presionado" casi instantáneo
+   * (100ms, misma duración que el fallback global de arriba) que no espera
+   * a que la navegación/datos terminen de cargar — y, cuando la categoría
+   * nueva efectivamente carga y el chip pasa a su estado seleccionado, un
+   * asentamiento de color más lento (200ms) para que el cambio no se sienta
+   * como un salto brusco.
+   *
+   * No alcanza con el `transition-colors` que ya tenía el chip: esa utility
+   * de Tailwind no incluye `transform`/`opacity` en su `transition-property`,
+   * así que el estado "presionado" (que sí necesita transform/opacity) no
+   * tenía ninguna transición propia — quedaba a merced del fallback global
+   * de arriba, que usa la misma duración (100ms) para todo, sin la
+   * distinción de tiempos que pide este caso puntual.
+   */
+  .chip-feedback {
+    transition:
+      transform 0.1s ease-out,
+      opacity 0.1s ease-out,
+      background-color 0.2s ease-out,
+      border-color 0.2s ease-out,
+      color 0.2s ease-out;
+  }
+  .chip-feedback:active {
+    transform: scale(0.94);
+    opacity: 0.75;
+  }
+
   .bg-grain::before {
     content: "";
     position: absolute;
