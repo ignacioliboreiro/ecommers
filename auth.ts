@@ -9,6 +9,11 @@ import { LoginSchema } from "@/lib/validations/auth";
 export const { handlers, auth, signIn, signOut } = NextAuth({
   adapter: PrismaAdapter(prisma),
   session: { strategy: "jwt" },
+  // Sin NEXTAUTH_URL fijo en .env (ver comentario ahí), next-auth confía en el
+  // Host real de cada request para construir sus URLs — necesario para poder
+  // loguearse/hacer checkout probando por la IP de la red local desde un
+  // celular real, no solo por localhost.
+  trustHost: true,
   pages: {
     signIn: "/login",
   },
