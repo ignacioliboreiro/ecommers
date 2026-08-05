@@ -4,7 +4,11 @@ export const PRODUCT_LIST_INCLUDE = {
   category: { select: { name: true, slug: true } },
   images: { orderBy: { position: "asc" as const }, take: 1 },
   variants: {
-    select: { id: true, priceCents: true, compareAtCents: true, stock: true },
+    // `attributes` se suma para el quick-add de la card: cuando hay más de
+    // una variante comprable hace falta poder etiquetar cada opción
+    // ("Negro", "512GB") en el mini-selector, sin traer el include completo
+    // de detalle.
+    select: { id: true, priceCents: true, compareAtCents: true, stock: true, attributes: true },
   },
 } satisfies Prisma.ProductInclude;
 

@@ -17,12 +17,45 @@ export function MobileNav({
   isLoggedIn?: boolean;
 }) {
   const [open, setOpen] = useState(false);
+  // `typeof window !== "undefined"` (lo que había antes acá) es SIEMPRE
+  // `true` en un browser, incluido el primer render de hidratación de React
+  // — no es un check "recién disponible después del mount". El servidor
+  // renderiza `null` en esta rama (no hay `window` ahí), pero el cliente,
+  // ya en su primer render, evaluaba la condición como verdadera e intentaba
+  // montar el portal de inmediato: un mismatch de hidratación garantizado en
+  // cada carga, no algo intermitente. `mounted` en cambio arranca en `false`
+  // tanto en servidor como en el primer render del cliente (matchean), y
+  // recién pasa a `true` en un efecto — que por definición corre después de
+  // que la hidratación ya terminó.
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     if (!open) return;
-    document.body.style.overflow = "hidden";
+
+    // `overflow: hidden` en <body> es la técnica "obvia" para bloquear el
+    // scroll de fondo, pero es conocida por no ser confiable en iOS Safari
+    // (no evita de forma consistente el scroll/rubber-band del contenido
+    // detrás del menú, incluso con el overlay encima). La técnica robusta en
+    // iOS es fijar el <body> en su posición actual (`position: fixed` +
+    // `top` negativo con el scroll guardado) y recién ahí destrabarlo y
+    // restaurar la posición al cerrar.
+    const scrollY = window.scrollY;
+    const { style } = document.body;
+    style.position = "fixed";
+    style.top = `-${scrollY}px`;
+    style.left = "0";
+    style.right = "0";
+
     return () => {
-      document.body.style.overflow = "";
+      style.position = "";
+      style.top = "";
+      style.left = "";
+      style.right = "";
+      window.scrollTo(0, scrollY);
     };
   }, [open]);
 
@@ -38,7 +71,7 @@ export function MobileNav({
         <Menu className="size-5" aria-hidden />
       </button>
 
-      {typeof window !== "undefined" && document.body ? (
+      {mounted ? (
         createPortal(
           <AnimatePresence>
             {open && (

@@ -89,7 +89,11 @@
     @apply border-border outline-ring/50;
   }
   body {
-    @apply bg-background text-foreground;
+    /* `relative`: contenedor posicionado para que `.bg-grain::before`
+       (ahora `absolute`, ver comentario ahí) cubra TODO el contenido de
+       `<body>` — que crece más alto que el viewport inicial — y no solo el
+       primer alto de pantalla. */
+    @apply bg-background text-foreground relative;
   }
   html {
     @apply font-sans scroll-smooth;
@@ -106,6 +110,38 @@
   ::selection {
     background: oklch(0.84 0.165 98 / 30%);
   }
+
+  /*
+   * Feedback táctil universal al presionar. En mobile no hay `:hover` que
+   * compense la falta de un estado "presionado": sin esto, tocar cualquier
+   * link o botón del sitio no daba ninguna señal de que el toque había
+   * registrado antes de que la acción se completara (auditoría: 22 archivos
+   * con clases `hover:` y CERO `active:` en todo el proyecto, fuera del
+   * `<Button>` de shadcn).
+   *
+   * Se define acá, a nivel de elemento, en vez de parchar cada componente
+   * uno por uno — así cubre TODO el sitio de una sola vez, incluido
+   * cualquier link/botón que se agregue después. Los componentes que ya
+   * definen su propio `active:` (ej. components/ui/button.tsx, que tiene
+   * `active:translate-y-px`) lo pisan sin problema: las utilities de
+   * Tailwind viven en una capa (`@layer utilities`) de mayor prioridad que
+   * este `@layer base`, así que esta regla nunca gana un conflicto real.
+   */
+  a[href],
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]),
+  summary {
+    transition:
+      transform 0.1s ease,
+      opacity 0.1s ease;
+  }
+  a[href]:active,
+  button:not(:disabled):active,
+  [role="button"]:not([aria-disabled="true"]):active,
+  summary:active {
+    transform: scale(0.97);
+    opacity: 0.85;
+  }
 }
 
 @layer utilities {
@@ -113,10 +149,67 @@
     text-wrap: balance;
   }
 
-  /* Textura sutil para romper la planitud de fondos oscuros grandes. */
+  /*
+   * Textura sutil para romper la planitud de fondos oscuros grandes.
+   *
+   * `position: absolute` sobre un `<body>` con `position: relative` (en vez
+   * de `position: fixed`) — a propósito, es el fix de un bug real reportado
+   * en celulares reales (la home se veía completamente en blanco/negro en
+   * mobile, mientras que en desktop y en emulación de DevTools/Playwright
+   * andaba perfecto).
+   *
+   * Causa: `position: fixed` + `mix-blend-mode` es una combinación con bugs
+   * de compositing conocidos en motores móviles reales — los navegadores
+   * mobile promueven los elementos `fixed` a su propia capa de GPU para
+   * scrolleo performante, y `mix-blend-mode` necesita mezclarse con lo que
+   * hay DETRÁS en esa misma capa; si el elemento queda aislado en su propia
+   * capa (algo que pasa de forma más agresiva en mobile que en desktop), el
+   * blend no puede calcularse y el navegador puede terminar pintando una
+   * capa opaca en vez de la textura translúcida al 3.5% de opacidad — es
+   * decir, literalmente "toda la pantalla en negro". No se pudo reproducir
+   * en Chromium mobile emulado NI en el motor WebKit real de Playwright
+   * (ninguno de los dos replica el compositing de hardware/GPU de un
+   * dispositivo físico), lo cual es consistente con que sea un bug de
+   * compositing específico de hardware real y no de layout/JS.
+   *
+   * `position: absolute` en vez de `fixed` evita esa promoción a capa
+   * aislada: el efecto visual es idéntico (una textura sutil que cubre toda
+   * la página) salvo que ahora se desplaza con el scroll en vez de quedar
+   * fija al viewport — imperceptible para un patrón de ruido repetitivo sin
+   * ningún punto de referencia visual.
+   */
+  /*
+   * Feedback de dos tiempos para los chips de categoría del catálogo
+   * (Todos/Audio/Cámaras/etc.): al tocar, un "presionado" casi instantáneo
+   * (100ms, misma duración que el fallback global de arriba) que no espera
+   * a que la navegación/datos terminen de cargar — y, cuando la categoría
+   * nueva efectivamente carga y el chip pasa a su estado seleccionado, un
+   * asentamiento de color más lento (200ms) para que el cambio no se sienta
+   * como un salto brusco.
+   *
+   * No alcanza con el `transition-colors` que ya tenía el chip: esa utility
+   * de Tailwind no incluye `transform`/`opacity` en su `transition-property`,
+   * así que el estado "presionado" (que sí necesita transform/opacity) no
+   * tenía ninguna transición propia — quedaba a merced del fallback global
+   * de arriba, que usa la misma duración (100ms) para todo, sin la
+   * distinción de tiempos que pide este caso puntual.
+   */
+  .chip-feedback {
+    transition:
+      transform 0.1s ease-out,
+      opacity 0.1s ease-out,
+      background-color 0.2s ease-out,
+      border-color 0.2s ease-out,
+      color 0.2s ease-out;
+  }
+  .chip-feedback:active {
+    transform: scale(0.94);
+    opacity: 0.75;
+  }
+
   .bg-grain::before {
     content: "";
-    position: fixed;
+    position: absolute;
     inset: 0;
     z-index: 100;
     pointer-events: none;
