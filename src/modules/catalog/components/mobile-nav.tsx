@@ -17,6 +17,21 @@ export function MobileNav({
   isLoggedIn?: boolean;
 }) {
   const [open, setOpen] = useState(false);
+  // `typeof window !== "undefined"` (lo que había antes acá) es SIEMPRE
+  // `true` en un browser, incluido el primer render de hidratación de React
+  // — no es un check "recién disponible después del mount". El servidor
+  // renderiza `null` en esta rama (no hay `window` ahí), pero el cliente,
+  // ya en su primer render, evaluaba la condición como verdadera e intentaba
+  // montar el portal de inmediato: un mismatch de hidratación garantizado en
+  // cada carga, no algo intermitente. `mounted` en cambio arranca en `false`
+  // tanto en servidor como en el primer render del cliente (matchean), y
+  // recién pasa a `true` en un efecto — que por definición corre después de
+  // que la hidratación ya terminó.
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     if (!open) return;
@@ -56,7 +71,7 @@ export function MobileNav({
         <Menu className="size-5" aria-hidden />
       </button>
 
-      {typeof window !== "undefined" && document.body ? (
+      {mounted ? (
         createPortal(
           <AnimatePresence>
             {open && (
