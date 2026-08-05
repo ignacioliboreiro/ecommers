@@ -10,7 +10,8 @@ export default function StorefrontLayout({ children }: { children: ReactNode }) 
   return (
     <div className="flex flex-1 flex-col">
       <CategoryNav />
-      <main className="flex flex-1 flex-col">
+      {/* Ver comentario sobre tabIndex={-1}/outline-none en app/page.tsx. */}
+      <main id="main-content" tabIndex={-1} className="flex flex-1 flex-col outline-none">
         <PageTransition>{children}</PageTransition>
       </main>
       <Footer />

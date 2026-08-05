@@ -10,7 +10,18 @@ export default function Home() {
   return (
     <div className="flex flex-1 flex-col">
       <CategoryNav />
-      <main className="flex flex-1 flex-col">
+      {/*
+        `tabIndex={-1}`: el <main> no es focuseable por default, así que sin
+        esto el skip-link de CategoryNav mueve el scroll pero NO el foco
+        real (el foco queda en <body>) — inútil para quien navega con
+        teclado/lector de pantalla. `outline-none` acá es intencional (no el
+        anti-patrón de ocultar el foco sin reemplazo): este es el contenedor
+        que recibe el salto, no un control interactivo — ponerle un anillo
+        de foco alrededor de toda la página se vería raro. El propio
+        skip-link ya tiene su estado de foco visible mientras se tabula
+        hasta él.
+      */}
+      <main id="main-content" tabIndex={-1} className="flex flex-1 flex-col outline-none">
         <Hero />
         <CategoryGrid />
         <FeaturedProducts />

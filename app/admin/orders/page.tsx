@@ -67,7 +67,7 @@ export default async function AdminOrdersPage({ searchParams }: AdminOrdersPageP
             id="search"
             name="search"
             defaultValue={search}
-            placeholder="Id o email de contacto..."
+            placeholder="Id o email de contacto…"
             className="max-w-xs"
           />
         </div>

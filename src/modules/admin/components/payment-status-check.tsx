@@ -38,7 +38,7 @@ export function PaymentStatusCheckButton({ orderId }: { orderId: string }) {
           }
         >
           <RefreshCw className={isPending ? "animate-spin" : undefined} aria-hidden />
-          {isPending ? "Consultando..." : "Consultar al proveedor"}
+          {isPending ? "Consultando…" : "Consultar al proveedor"}
         </Button>
       </div>
 

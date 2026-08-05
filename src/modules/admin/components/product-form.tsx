@@ -146,7 +146,7 @@ export function ProductForm({ categories, initialValues }: ProductFormProps) {
       )}
 
       <Button type="submit" disabled={pending} className="w-fit">
-        {pending ? "Guardando..." : isEditing ? "Guardar cambios" : "Crear producto"}
+        {pending ? "Guardando…" : isEditing ? "Guardar cambios" : "Crear producto"}
       </Button>
     </form>
   );

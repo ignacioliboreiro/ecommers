@@ -85,7 +85,7 @@ export function OrderStatusForm({
           <label htmlFor="note" className="text-sm font-medium">
             Nota (opcional)
           </label>
-          <Textarea id="note" name="note" rows={2} placeholder="Motivo del cambio..." />
+          <Textarea id="note" name="note" rows={2} placeholder="Motivo del cambio…" />
         </div>
 
         <div aria-live="polite">
@@ -102,7 +102,7 @@ export function OrderStatusForm({
         </div>
 
         <Button type="submit" disabled={pending} className="w-fit">
-          {pending ? "Guardando..." : "Guardar cambio"}
+          {pending ? "Guardando…" : "Guardar cambio"}
         </Button>
       </form>
 

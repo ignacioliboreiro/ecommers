@@ -179,7 +179,7 @@ export function QuickAddButton({
                 type="button"
                 disabled={isPending}
                 onClick={() => addVariant(variant.id)}
-                className="flex items-center justify-between gap-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-60"
+                className="flex items-center justify-between gap-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 <span className="truncate">{label}</span>
                 <span className="flex shrink-0 items-center gap-1.5 tabular-nums text-muted-foreground">

@@ -70,7 +70,7 @@ export default async function AdminProductsPage({ searchParams }: AdminProductsP
             id="search"
             name="search"
             defaultValue={search}
-            placeholder="Nombre del producto..."
+            placeholder="Nombre del producto…"
             className="max-w-xs"
           />
         </div>

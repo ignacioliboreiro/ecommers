@@ -168,7 +168,7 @@ export function ProductOptions({ variants }: ProductOptionsProps) {
           disabled={pending || !activeVariant || activeVariant.stock <= 0}
           className="w-full sm:w-auto"
         >
-          {pending ? "Agregando..." : "Agregar al carrito"}
+          {pending ? "Agregando…" : "Agregar al carrito"}
         </Button>
         <AnimatePresence>
           {state?.status === "error" && (

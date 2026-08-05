@@ -31,7 +31,7 @@ export function ProductCard({
   return (
     <div
       className={cn(
-        "group animate-in fade-in slide-in-from-bottom-4 fill-mode-both relative h-full overflow-hidden rounded-2xl bg-card ring-1 ring-white/10 transition-all duration-300 ease-out hover:-translate-y-1 hover:ring-primary/40"
+        "group animate-in fade-in slide-in-from-bottom-4 fill-mode-both relative h-full overflow-hidden rounded-2xl bg-card ring-1 ring-white/10 transition-[transform,box-shadow] duration-300 ease-out hover:-translate-y-1 hover:ring-primary/40"
       )}
       style={{ animationDelay: `${delay}ms`, animationDuration: "450ms" }}
     >
@@ -46,7 +46,7 @@ export function ProductCard({
       <Link
         href={`/products/${product.slug}`}
         aria-label={product.name}
-        className="absolute inset-0 z-0 rounded-2xl"
+        className="absolute inset-0 z-0 rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background"
       />
       <div className="relative aspect-square overflow-hidden rounded-t-2xl bg-muted">
         {image ? (
@@ -76,7 +76,7 @@ export function ProductCard({
           exacta de clases — se corrige acá también en vez de dejar la misma
           bomba de tiempo sin usar.
         */}
-        <div className="absolute right-2 bottom-2 flex size-8 items-center justify-center rounded-full bg-background/90 text-foreground opacity-0 transition-all duration-300 ease-out group-hover:opacity-100 group-hover:translate-y-0 translate-y-1">
+        <div className="absolute right-2 bottom-2 flex size-8 items-center justify-center rounded-full bg-background/90 text-foreground opacity-0 transition-[opacity,transform] duration-300 ease-out group-hover:opacity-100 group-hover:translate-y-0 translate-y-1">
           <ArrowUpRight className="size-4" aria-hidden />
         </div>
         {/*

@@ -68,7 +68,7 @@ export function ImageUploader({ images, onChange }: ImageUploaderProps) {
           ) : (
             <Upload className="size-5" aria-hidden />
           )}
-          <span className="text-xs">{pending ? "Subiendo..." : "Subir"}</span>
+          <span className="text-xs">{pending ? "Subiendo…" : "Subir"}</span>
         </button>
       </div>
 

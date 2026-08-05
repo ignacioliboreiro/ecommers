@@ -35,10 +35,14 @@ export function LoginForm() {
         )}
       </div>
 
-      {state?.message && <p className="text-sm text-destructive">{state.message}</p>}
+      {state?.message && (
+        <p className="text-sm text-destructive" role="alert">
+          {state.message}
+        </p>
+      )}
 
       <Button type="submit" disabled={pending} className="w-full">
-        {pending ? "Ingresando..." : "Ingresar"}
+        {pending ? "Ingresando…" : "Ingresar"}
       </Button>
 
       <p className="text-center text-sm text-muted-foreground">

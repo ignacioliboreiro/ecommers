@@ -50,10 +50,14 @@ export function RegisterForm() {
         )}
       </div>
 
-      {state?.message && <p className="text-sm text-destructive">{state.message}</p>}
+      {state?.message && (
+        <p className="text-sm text-destructive" role="alert">
+          {state.message}
+        </p>
+      )}
 
       <Button type="submit" disabled={pending} className="w-full">
-        {pending ? "Creando cuenta..." : "Crear cuenta"}
+        {pending ? "Creando cuenta…" : "Crear cuenta"}
       </Button>
 
       <p className="text-center text-sm text-muted-foreground">

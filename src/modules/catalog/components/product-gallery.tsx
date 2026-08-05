@@ -56,7 +56,7 @@ export function ProductGallery({ images, productName }: ProductGalleryProps) {
               aria-label={`Ver imagen ${index + 1} de ${productName}`}
               aria-current={index === activeIndex}
               className={cn(
-                "relative aspect-square overflow-hidden rounded-lg bg-muted ring-1 transition-all",
+                "relative aspect-square overflow-hidden rounded-lg bg-muted ring-1 transition-shadow outline-none focus-visible:ring-2 focus-visible:ring-primary",
                 index === activeIndex
                   ? "ring-2 ring-primary"
                   : "ring-white/10 hover:ring-white/30"

@@ -36,34 +36,64 @@ export function CheckoutForm({ demoMode }: { demoMode: boolean }) {
           <div className="space-y-4 rounded-lg border border-border p-4">
             <div className="space-y-2">
               <Label htmlFor="street">Calle *</Label>
-              <Input id="street" name="street" required placeholder="Calle y número" />
+              <Input
+                id="street"
+                name="street"
+                required
+                autoComplete="street-address"
+                placeholder="Calle y número"
+              />
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="city">Ciudad *</Label>
-                <Input id="city" name="city" required placeholder="Ciudad" />
+                <Input
+                  id="city"
+                  name="city"
+                  required
+                  autoComplete="address-level2"
+                  placeholder="Ciudad"
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="state">Provincia *</Label>
-                <Input id="state" name="state" required placeholder="Provincia" />
+                <Input
+                  id="state"
+                  name="state"
+                  required
+                  autoComplete="address-level1"
+                  placeholder="Provincia"
+                />
               </div>
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="postalCode">Código postal *</Label>
-                <Input id="postalCode" name="postalCode" required placeholder="1425" />
+                <Input
+                  id="postalCode"
+                  name="postalCode"
+                  required
+                  autoComplete="postal-code"
+                  placeholder="1425"
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="country">País *</Label>
-                <Input id="country" name="country" required defaultValue="AR" />
+                <Input id="country" name="country" required autoComplete="country" defaultValue="AR" />
               </div>
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="phone">Teléfono (opcional)</Label>
-              <Input id="phone" name="phone" type="tel" placeholder="Teléfono de contacto" />
+              <Input
+                id="phone"
+                name="phone"
+                type="tel"
+                autoComplete="tel"
+                placeholder="Teléfono de contacto"
+              />
             </div>
           </div>
 
@@ -130,7 +160,7 @@ export function CheckoutForm({ demoMode }: { demoMode: boolean }) {
         {!orderCreated && (
           <Button type="submit" disabled={pending} size="lg" className="w-full">
             {pending
-              ? "Procesando..."
+              ? "Procesando…"
               : demoMode
                 ? "Continuar al pago simulado"
                 : "Completar compra"}
